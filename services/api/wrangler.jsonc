@@ -18,9 +18,9 @@
   "vars": {
     "SUPABASE_URL": "https://vgehaqqukkkgvoqgpkap.supabase.co",
     "LOG_LEVEL": "info",
-    // The native app does not need CORS. Add the web app's Pages URL here once it exists.
-    "CORS_ORIGINS": "https://dairynest.pages.dev,http://localhost:8081"
-  }
-  // Optional, faster pooled connections: create with `npx wrangler hyperdrive create dairynest-db --connection-string="..."`
-  // then add: "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<id>" }]
+    // The native app does not need CORS; the web app (dairynest-web) does.
+    "CORS_ORIGINS": "https://dairynest-web.prathviholla67.workers.dev,http://localhost:8081"
+  },
+  // Hyperdrive: pooled TLS connection to Supabase (created by scripts/cf-deploy.mjs, query caching disabled).
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "17d15df5c2ee445cafdcaa525e855c8a" }]
 }

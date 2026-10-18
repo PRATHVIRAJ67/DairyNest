@@ -1,4 +1,4 @@
-// One-command Cloudflare deployment: API on Workers (+ Hyperdrive to Supabase) and the web app on Pages.
+// One-command Cloudflare deployment: API on Workers (+ Hyperdrive to Supabase) and the web app as a static-assets Worker.
 // Prerequisites: `npx wrangler login` once, and the repo-root .env filled in (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY).
 // Usage (repo root): npm run cf:deploy            -> API + web app
 //                    npm run cf:deploy -- --api-only
@@ -14,7 +14,6 @@ const root = resolve(apiDir, '..', '..');
 const mobileDir = join(root, 'apps', 'mobile');
 const apiOnly = process.argv.includes('--api-only');
 const HD_NAME = 'dairynest-db';
-const PAGES_PROJECT = 'dairynest';
 
 const step = (m) => console.log(`\n▸ ${m}`);
 const fail = (m) => { console.error(`\n✖ ${m}`); process.exit(1); };
@@ -55,7 +54,7 @@ if (!hdId) {
 
 const cfgPath = join(apiDir, 'wrangler.jsonc');
 let cfg = readFileSync(cfgPath, 'utf8');
-if (!cfg.includes('"hyperdrive":')) {
+if (!/^\s*"hyperdrive"\s*:/m.test(cfg)) { // ignore the commented example
   cfg = cfg.replace(/\n}\s*$/, `,\n  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "${hdId}" }]\n}\n`);
   writeFileSync(cfgPath, cfg);
   console.log('  added HYPERDRIVE binding to wrangler.jsonc');
@@ -103,7 +102,7 @@ if (apiOnly) {
   process.exit(0);
 }
 
-// ---------------------------------------------------------------- Web app on Pages
+// ---------------------------------------------------------------- Web app (static assets on Workers)
 step('Building the web app');
 const publicEnv = {
   EXPO_PUBLIC_API_URL: `${apiUrl}/api/v1`,
@@ -114,18 +113,14 @@ const publicEnv = {
 };
 const b = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-web'], { cwd: mobileDir, shell: true, stdio: 'inherit', env: { ...process.env, ...publicEnv } });
 if (b.status !== 0) fail('Web build failed.');
-writeFileSync(join(mobileDir, 'dist-web', '_redirects'), '/* /index.html 200\n'); // client-side routes
-
-step(`Pages project "${PAGES_PROJECT}"`);
-wr(['pages', 'project', 'create', PAGES_PROJECT, '--production-branch', 'main'], { echo: false }); // fine if it exists
-const pd = wr(['pages', 'deploy', 'dist-web', '--project-name', PAGES_PROJECT, '--branch', 'main', '--commit-dirty=true'], { cwd: mobileDir });
-if (!pd.ok) fail('Pages deploy failed.');
-// The production address is <project>.pages.dev, or a suffixed name if that subdomain was taken.
-const sub = (pd.out.match(/https:\/\/[a-z0-9]+\.([a-z0-9-]+)\.pages\.dev/) ?? [])[1] ?? PAGES_PROJECT;
-const pagesUrl = `https://${sub}.pages.dev`;
+step('Deploying the web app (static assets Worker "dairynest-web")');
+const wd = wr(['deploy'], { cwd: mobileDir });
+if (!wd.ok) fail('Web app deploy failed.');
+const webUrl = (wd.out.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/) ?? [])[0];
+if (!webUrl) fail('Web app deployed, but could not read its workers.dev URL.');
 
 step('Allowing the web app to call the API (CORS)');
-dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${pagesUrl},http://localhost:8081`], { echo: false });
+dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${webUrl},http://localhost:8081`], { echo: false });
 if (!dep.ok) fail('Re-deploy with CORS failed.');
 
-console.log(`\n✔ Done.\n  Web app: ${pagesUrl}\n  API:     ${apiUrl}/api/v1\n  For the APK, use EXPO_PUBLIC_API_URL=${apiUrl}/api/v1`);
+console.log(`\n✔ Done.\n  Web app: ${webUrl}\n  API:     ${apiUrl}/api/v1\n  For the APK, use EXPO_PUBLIC_API_URL=${apiUrl}/api/v1`);

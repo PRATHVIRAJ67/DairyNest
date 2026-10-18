@@ -1,0 +1,12 @@
+// Web version of the app, served as static assets on Cloudflare Workers (Cloudflare's recommended successor to Pages).
+// Built and deployed by services/api/scripts/cf-deploy.mjs, which sets the API and Supabase values at build time.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "dairynest-web",
+  "compatibility_date": "2025-09-15",
+  "assets": {
+    "directory": "./dist-web",
+    // Expo Router is a single-page app: unknown paths serve index.html so deep links work.
+    "not_found_handling": "single-page-application"
+  }
+}

@@ -37,6 +37,17 @@
         "EXPO_PUBLIC_API_URL": "https://meadowpail-demo-api.onrender.com/api/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@example.com"
       }
+    },
+    "cloud": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://dairynest-api.prathviholla67.workers.dev/api/v1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vgehaqqukkkgvoqgpkap.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_KC4gucdF9nlzE7ejKQDUHA_A6NOixK0"
+      }
     }
   }
 }
