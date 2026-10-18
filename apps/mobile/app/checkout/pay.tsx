@@ -23,7 +23,7 @@ function checkoutHtml(o: { key: string; orderId: string; amount: number; name?: 
 <script>
   function post(m){ window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
   try {
-    var o = ${safeJson({ key: o.key, amount: o.amount, currency: 'INR', order_id: o.orderId, name: 'Meadowpail', description: 'Milk and curd subscription', prefill: { name: o.name, contact: o.contact, email: o.email }, theme: { color: '#1F5C3A' } })};
+    var o = ${safeJson({ key: o.key, amount: o.amount, currency: 'INR', order_id: o.orderId, name: 'DailyDairy', description: 'Milk and curd subscription', prefill: { name: o.name, contact: o.contact, email: o.email }, theme: { color: '#1F5C3A' } })};
     o.handler = function(r){ post({ type: 'success', razorpay_order_id: r.razorpay_order_id, razorpay_payment_id: r.razorpay_payment_id, razorpay_signature: r.razorpay_signature }); };
     o.modal = { ondismiss: function(){ post({ type: 'dismissed' }); } };
     var rzp = new Razorpay(o);
@@ -94,16 +94,18 @@ export default function Pay() {
   const demoPay = async (outcome: 'success' | 'fail') => {
     setPhase('verifying');
     try {
-      const proof = await api.post<{ razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }>('/demo/pay', { providerOrderId: p.orderId, outcome });
+      const proof = await api.post<{ razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }>(config.demoMode ? '/demo/pay' : '/test/pay', { providerOrderId: p.orderId, outcome });
       await handle({ type: 'success', ...proof });
     } catch (err) { setReason(errorMessage(err)); setPhase('failed'); }
   };
 
-  if (config.demoMode && phase === 'checkout') {
+  // The server decides: its simulated provider hands out this key instead of a Razorpay key.
+  const simulated = config.demoMode || p.keyId === 'rzp_test_simulated';
+  if (simulated && phase === 'checkout') {
     return (
       <Screen>
         <Header title="Payment" />
-        <Banner tone="info" title="Demo payment" message="Razorpay is simulated by the demo server. No money moves, but the server still verifies the payment signature." />
+        <Banner tone="info" title="Test payment" message="This test version simulates payments. No money moves, but the server still verifies the payment like a real one." />
         <View style={{ alignItems: 'center', marginVertical: spacing.xl }}>
           <Text muted>Amount due</Text>
           <Text variant="display" color={colors.primary} testID="demo-amount">{money(Number(p.amount))}</Text>

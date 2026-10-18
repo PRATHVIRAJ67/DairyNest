@@ -15,6 +15,14 @@ const schema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  /**
+   * TESTING ONLY (see src/testing.ts). With both set, any phone number can sign in with TEST_LOGIN_CODE instead of an
+   * SMS OTP. Remove them before real customers use the app.
+   */
+  TEST_LOGIN_CODE: z.string().regex(/^\d{6}$/, 'TEST_LOGIN_CODE must be 6 digits').optional(),
+  TEST_SESSION_SECRET: z.string().min(32, 'TEST_SESSION_SECRET must be at least 32 characters').optional(),
+  /** TESTING ONLY: "simulated" replaces Razorpay with signature-checked fake payments (needs TEST_SESSION_SECRET). */
+  PAYMENTS_MODE: z.enum(['razorpay', 'simulated']).default('razorpay'),
 });
 
 export type Config = z.infer<typeof schema>;

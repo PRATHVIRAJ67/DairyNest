@@ -3,7 +3,7 @@ services:
   # Public DEMO API: in-memory data, any phone number + code 123456, simulated payments.
   # Free instances sleep after ~15 idle minutes; the next request wakes them (about 1 minute) and data resets.
   - type: web
-    name: meadowpail-demo-api
+    name: dailydairy-demo-api
     runtime: docker
     plan: free
     region: singapore
@@ -16,7 +16,7 @@ services:
 
   # REAL API (uncomment when Supabase is set up). Secrets are entered in the Render dashboard, never committed.
   # - type: web
-  #   name: meadowpail-api
+  #   name: dailydairy-api
   #   runtime: docker
   #   plan: free
   #   region: singapore

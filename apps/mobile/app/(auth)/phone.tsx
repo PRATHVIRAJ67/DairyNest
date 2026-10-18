@@ -37,6 +37,7 @@ export default function PhoneScreen() {
         <Text muted style={{ marginTop: 8 }}>Enter your mobile number. We will text you a one-time code to sign in or create your account.</Text>
       </View>
       {config.demoMode ? <Banner tone="info" title="Demo mode" message="Use any 10-digit mobile number. No SMS is sent; the code is 123456." /> : null}
+      {config.testLogin && !config.demoMode ? <Banner tone="info" title="Test version" message="No SMS is sent. Use any 10-digit mobile number, then enter the test code you were given." /> : null}
       {error ? <Banner tone="danger" title="Could not send the code" message={error} testID="phone-error" /> : null}
       <Controller
         control={control}

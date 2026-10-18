@@ -96,11 +96,11 @@ export interface Ctx {
   pushes: { token: string; title: string }[];
 }
 
-export async function createCtx(opts: { payments?: 'test' | 'unconfigured' } = {}): Promise<Ctx> {
+export async function createCtx(opts: { payments?: 'test' | 'unconfigured'; testing?: { code: string; secret: string } } = {}): Promise<Ctx> {
   const pg = new PGlite();
   await pg.exec(`
     create schema auth;
-    create table auth.users (id uuid primary key default gen_random_uuid(), phone text, email text);
+    create table auth.users (id uuid primary key default gen_random_uuid(), phone text, email text, aud text, role text, created_at timestamptz, updated_at timestamptz, phone_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     create role anon nologin; create role authenticated nologin; create role service_role nologin;
     grant usage on schema public, auth to anon, authenticated, service_role;
@@ -118,13 +118,20 @@ export async function createCtx(opts: { payments?: 'test' | 'unconfigured' } = {
   const pushes: { token: string; title: string }[] = [];
   const push: PushSender = { async send(token, title) { pushes.push({ token, title }); return true; } };
   const clock = { now: new Date('2026-03-10T10:00:00Z') }; // 15:30 IST, before the 21:00 cutoff
-  const config: Config = { NODE_ENV: 'test', PORT: 0, LOG_LEVEL: 'silent', CORS_ORIGINS: '*', DATABASE_URL: 'x', SUPABASE_URL: 'http://localhost', SUPABASE_ANON_KEY: 'anon-key-placeholder' };
+  const config: Config = { NODE_ENV: 'test', PORT: 0, LOG_LEVEL: 'silent', CORS_ORIGINS: '*', DATABASE_URL: 'x', SUPABASE_URL: 'http://localhost', SUPABASE_ANON_KEY: 'anon-key-placeholder', PAYMENTS_MODE: 'razorpay' };
   const deps: Deps = {
     db: pgliteDb(pg), verifier: new FakeVerifier(), log, config, now: () => clock.now,
     payments: opts.payments === 'unconfigured' ? new UnconfiguredProvider() : provider,
     notifier: new Notifier(push, log),
   };
-  const app = createApp(deps, { rateLimit: false });
+  if (opts.testing) {
+    // Production-like test mode: signed test sessions + simulated payments, wired exactly as bootstrap.ts does.
+    const { SimulatedPaymentProvider, withTestSessions } = await import('../src/testing');
+    deps.config = { ...deps.config, TEST_LOGIN_CODE: opts.testing.code, TEST_SESSION_SECRET: opts.testing.secret, PAYMENTS_MODE: 'simulated' };
+    deps.verifier = withTestSessions(deps.verifier, opts.testing.secret, () => clock.now);
+    deps.payments = new SimulatedPaymentProvider(opts.testing.secret);
+  }
+  const app = createApp(deps, { rateLimit: !!opts.testing });
   const as = (userId: string) => {
     const t = `Bearer user:${userId}`;
     return {

@@ -24,7 +24,7 @@ Object.defineProperty(ctx.deps, 'now', { value: () => new Date() });
 
 /** Stable UUID for a phone number, so the same number always signs in as the same customer. */
 function uuidForPhone(phone: string) {
-  const h = createHash('sha1').update(`meadowpail-demo:${phone}`).digest('hex');
+  const h = createHash('sha1').update(`dailydairy-demo:${phone}`).digest('hex');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${((parseInt(h[16], 16) & 0x3) | 0x8).toString(16)}${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
@@ -63,7 +63,7 @@ app.use(api);
 
 app.listen(port, '0.0.0.0', () => {
   console.log('');
-  console.log('  Meadowpail DEMO API (in-memory database, simulated login and payments)');
+  console.log('  DailyDairy DEMO API (in-memory database, simulated login and payments)');
   console.log(`  Local:    http://localhost:${port}/api/v1`);
   console.log(`  API docs: http://localhost:${port}/api/v1/docs`);
   console.log('  Sign in with any Indian mobile number and the code 123456.');

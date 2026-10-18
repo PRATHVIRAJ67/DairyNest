@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
 
 export const config = {
-  appName: 'Meadowpail',
+  appName: 'DailyDairy',
   apiUrl: process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? 'http://localhost:4000/api/v1',
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
@@ -17,7 +17,12 @@ export const config = {
   demoMode:
     process.env.EXPO_PUBLIC_DEMO_MODE === '1' &&
     ((typeof __DEV__ === 'undefined' || __DEV__) || process.env.EXPO_PUBLIC_DEMO_BUILD === '1'),
+  /**
+   * Test login: no SMS. The phone number and the shared test code go to the API's /auth/test-login, which only works
+   * while the server has TEST_LOGIN_CODE set. The server is the gate; this flag only switches the client.
+   */
+  testLogin: process.env.EXPO_PUBLIC_TEST_LOGIN === '1',
   easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? (Constants.expoConfig?.extra as any)?.eas?.projectId ?? '',
 };
 
-export const isConfigured = () => config.demoMode || (!!config.supabaseUrl && !!config.supabaseAnonKey);
+export const isConfigured = () => config.demoMode || config.testLogin || (!!config.supabaseUrl && !!config.supabaseAnonKey);

@@ -1,5 +1,5 @@
 // Builds an installable APK in Expo's cloud (EAS Build). Requires `npx eas-cli login` once.
-// Usage: npm run apk:demo   (profile "demo": separate "Meadowpail Demo" app pointed at the local demo API)
+// Usage: npm run apk:demo   (profile "demo": separate "DailyDairy Demo" app pointed at the local demo API)
 // The repo is uploaded without git (EAS_NO_VCS) so it works before the first commit; .easignore keeps
 // secrets, node_modules and build output out of the upload.
 import { spawnSync } from 'node:child_process';

@@ -5,14 +5,22 @@ import type { Db } from './db';
 import type { Deps } from './deps';
 import type { Logger } from './logger';
 import { ExpoPushSender, Notifier } from './notify';
-import { RazorpayProvider, UnconfiguredProvider } from './payments/provider';
+import { RazorpayProvider, UnconfiguredProvider, type PaymentProvider } from './payments/provider';
+import { SimulatedPaymentProvider, testLoginEnabled, withTestSessions } from './testing';
 
 /** Wires real providers from configuration. Shared by the Node server and the Cloudflare Worker. */
 export function buildDeps(config: Config, log: Logger, db: Db): Deps {
-  const payments =
-    config.RAZORPAY_KEY_ID && config.RAZORPAY_KEY_SECRET
-      ? new RazorpayProvider(config.RAZORPAY_KEY_ID, config.RAZORPAY_KEY_SECRET, config.RAZORPAY_WEBHOOK_SECRET)
-      : new UnconfiguredProvider();
+  let payments: PaymentProvider;
+  if (config.PAYMENTS_MODE === 'simulated') {
+    if (!config.TEST_SESSION_SECRET) throw new Error('PAYMENTS_MODE=simulated needs TEST_SESSION_SECRET');
+    payments = new SimulatedPaymentProvider(config.TEST_SESSION_SECRET);
+    log.warn('TESTING: payments are SIMULATED. No real money is collected.');
+  } else {
+    payments =
+      config.RAZORPAY_KEY_ID && config.RAZORPAY_KEY_SECRET
+        ? new RazorpayProvider(config.RAZORPAY_KEY_ID, config.RAZORPAY_KEY_SECRET, config.RAZORPAY_WEBHOOK_SECRET)
+        : new UnconfiguredProvider();
+  }
   if (!payments.isConfigured()) log.warn('Razorpay credentials missing: checkout endpoints will return PAYMENT_NOT_CONFIGURED');
   if (payments.isConfigured() && !config.RAZORPAY_WEBHOOK_SECRET) log.warn('RAZORPAY_WEBHOOK_SECRET missing: webhooks will be rejected');
 
@@ -25,9 +33,13 @@ export function buildDeps(config: Config, log: Logger, db: Db): Deps {
     };
   }
 
+  if (testLoginEnabled(config)) log.warn('TESTING: test login is ON. Any phone number can sign in with the test code.');
+
   return {
     db,
-    verifier: supabaseVerifier(config.SUPABASE_URL, config.SUPABASE_ANON_KEY),
+    verifier: testLoginEnabled(config)
+      ? withTestSessions(supabaseVerifier(config.SUPABASE_URL, config.SUPABASE_ANON_KEY), config.TEST_SESSION_SECRET!, () => new Date())
+      : supabaseVerifier(config.SUPABASE_URL, config.SUPABASE_ANON_KEY),
     payments,
     notifier: new Notifier(new ExpoPushSender(config.EXPO_ACCESS_TOKEN), log),
     log,

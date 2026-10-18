@@ -62,7 +62,9 @@ if (!/^\s*"hyperdrive"\s*:/m.test(cfg)) { // ignore the commented example
 
 // ---------------------------------------------------------------- API Worker
 step('Deploying API Worker');
-const vars = ['--var', `SUPABASE_URL:${env.SUPABASE_URL}`];
+const testing = !!(env.TEST_LOGIN_CODE && env.TEST_SESSION_SECRET);
+const vars = ['--var', `SUPABASE_URL:${env.SUPABASE_URL}`, '--var', `PAYMENTS_MODE:${env.PAYMENTS_MODE || 'razorpay'}`];
+if (testing) console.log('  ⚠ TEST MODE: test login is ON and payments are ' + (env.PAYMENTS_MODE || 'razorpay') + '. Remove TEST_* from .env before launch.');
 let dep = wr(['deploy', ...vars]);
 if (!dep.ok) fail('Worker deploy failed.');
 const apiUrl = (dep.out.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/) ?? [])[0];
@@ -72,7 +74,7 @@ console.log(`  API: ${apiUrl}/api/v1`);
 // ---------------------------------------------------------------- secrets
 step('Uploading secrets (encrypted at Cloudflare, never stored in the repo)');
 const secrets = { DATABASE_URL: env.DATABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY };
-for (const k of ['SUPABASE_SERVICE_ROLE_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXPO_ACCESS_TOKEN']) {
+for (const k of ['SUPABASE_SERVICE_ROLE_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXPO_ACCESS_TOKEN', 'TEST_LOGIN_CODE', 'TEST_SESSION_SECRET']) {
   if (env[k]) secrets[k] = env[k];
 }
 const secretFile = join(tmpdir(), `dairynest-secrets-${process.pid}.json`);
@@ -92,7 +94,7 @@ const eas = JSON.parse(readFileSync(easPath, 'utf8'));
 eas.build.cloud = {
   distribution: 'internal',
   android: { buildType: 'apk' },
-  env: { EXPO_PUBLIC_API_URL: `${apiUrl}/api/v1`, EXPO_PUBLIC_SUPABASE_URL: env.SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY },
+  env: { EXPO_PUBLIC_API_URL: `${apiUrl}/api/v1`, EXPO_PUBLIC_SUPABASE_URL: env.SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY, EXPO_PUBLIC_TEST_LOGIN: testing ? '1' : '0' },
 };
 writeFileSync(easPath, `${JSON.stringify(eas, null, 2)}\n`);
 console.log('  updated the "cloud" APK profile in apps/mobile/eas.json');
@@ -109,6 +111,7 @@ const publicEnv = {
   EXPO_PUBLIC_SUPABASE_URL: env.SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
   EXPO_PUBLIC_DEMO_MODE: '0',
+  EXPO_PUBLIC_TEST_LOGIN: testing ? '1' : '0',
   CI: '1',
 };
 const b = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-web'], { cwd: mobileDir, shell: true, stdio: 'inherit', env: { ...process.env, ...publicEnv } });

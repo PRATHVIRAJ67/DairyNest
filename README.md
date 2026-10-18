@@ -1,4 +1,4 @@
-# Meadowpail: milk and curd subscription delivery
+# DailyDairy: milk and curd subscription delivery
 
 A customer app for prepaid milk and curd subscriptions, built as a monorepo.
 
@@ -56,7 +56,15 @@ Demo mode runs the real API on an in-memory database. It swaps SMS for the fixed
 
 ## Demo APK for a phone
 
-`npm run apk:demo` builds a separate **Meadowpail Demo** app (package `com.meadowpail.app.demo`) in Expo's cloud and prints a download link. It needs a free Expo account: run `npx eas-cli login` once first. The APK talks to the demo API at the address set in `apps/mobile/eas.json`, currently `http://192.168.1.37:4000/api/v1`. Keep `npm run demo:api` running on that computer, and keep the phone on the same Wi-Fi.
+`npm run apk:demo` builds a separate **DailyDairy Demo** app (package `com.dailydairy.app.demo`) in Expo's cloud and prints a download link. It needs a free Expo account: run `npx eas-cli login` once first. The APK talks to the demo API at the address set in `apps/mobile/eas.json`, currently `http://192.168.1.37:4000/api/v1`. Keep `npm run demo:api` running on that computer, and keep the phone on the same Wi-Fi.
+
+## Test mode (current live setup)
+
+The live backend runs in **test mode** so the app can be tried without SMS or Razorpay:
+
+- **Test login.** Any 10-digit Indian mobile number signs in with one shared 6-digit test code. The code is `TEST_LOGIN_CODE` in the repo-root `.env`, which is gitignored. No SMS is sent. The server issues signed 30-day sessions and creates a real customer per number. Code guessing is rate-limited.
+- **Simulated payments.** With `PAYMENTS_MODE=simulated`, checkout uses a stand-in for Razorpay. No money moves, but `/payments/verify` still checks the signature and the amount.
+- **Turning it off before launch.** Delete `TEST_LOGIN_CODE`, `TEST_SESSION_SECRET` and `PAYMENTS_MODE` from `.env`. Delete the two secrets in Cloudflare with `npx wrangler secret delete TEST_LOGIN_CODE` and `npx wrangler secret delete TEST_SESSION_SECRET`, run from `services/api`. Configure Supabase phone OTP and Razorpay, then run `npm run cf:deploy`.
 
 ## Host on Cloudflare (real Supabase backend)
 
@@ -74,8 +82,8 @@ To run locally in the Workers runtime, use `npm run cf:dev -w @milk/api` with se
 ## Online demo (any network)
 
 1. Push this repo to a private GitHub repo.
-2. On render.com, choose New > Blueprint and pick the repo. `render.yaml` creates `meadowpail-demo-api`, a free Docker service.
-3. Open `https://<service>.onrender.com/api/v1/health`. If the URL differs from `https://meadowpail-demo-api.onrender.com`, update `EXPO_PUBLIC_API_URL` in the `demo-online` profile of `apps/mobile/eas.json`.
+2. On render.com, choose New > Blueprint and pick the repo. `render.yaml` creates `dailydairy-demo-api`, a free Docker service.
+3. Open `https://<service>.onrender.com/api/v1/health`. If the URL differs from `https://dailydairy-demo-api.onrender.com`, update `EXPO_PUBLIC_API_URL` in the `demo-online` profile of `apps/mobile/eas.json`.
 4. Run `npx eas-cli login` once, then `npm run apk:demo-online`, and install the APK from the link.
 
 Free Render instances sleep after about 15 idle minutes. The first request then takes about a minute, and demo data resets.

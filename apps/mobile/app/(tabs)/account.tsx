@@ -30,7 +30,7 @@ export default function Account() {
         </View>
       </Card>
 
-      <SectionHeader title="My Meadowpail" />
+      <SectionHeader title="My DailyDairy" />
       <Card>
         <ListRow testID="row-addresses" icon="map-pin" title="Delivery addresses" subtitle="Add, edit or remove addresses" onPress={() => router.push('/addresses')} />
         <ListRow testID="row-payments" icon="credit-card" title="Payments and invoices" subtitle="History, receipts and refunds" onPress={() => router.push('/payments')} />

@@ -16,6 +16,7 @@ import * as catalog from './services/catalog';
 import * as deliveries from './services/deliveries';
 import * as payments from './services/payments';
 import * as subs from './services/subscriptions';
+import { buildTestRouter } from './testing';
 
 const idParam = z.object({ id: uuid });
 const pageQuery = paginationQuery;
@@ -24,6 +25,9 @@ export function buildRouter(deps: Deps): Router {
   const r = Router();
   const auth = authenticate(deps.verifier, deps.db);
   const uid = (req: any) => req.auth!.userId as string;
+
+  // Testing-only routes (test login, simulated payments). Mounted only when configured.
+  r.use(buildTestRouter(deps));
 
   // ---------------- public
   r.get('/health', asyncHandler(async (_req, res) => {

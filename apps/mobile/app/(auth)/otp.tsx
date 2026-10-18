@@ -40,9 +40,10 @@ export default function OtpScreen() {
 
   return (
     <Screen>
-      <Header title="Verify your number" subtitle={`Code sent to ${phone}`} />
+      <Header title="Verify your number" subtitle={config.testLogin || config.demoMode ? phone : `Code sent to ${phone}`} />
       {error ? <Banner tone="danger" title="Verification failed" message={error} testID="otp-error" /> : null}
       {config.demoMode ? <Banner tone="info" title="Demo mode" message={`No SMS is sent. Enter ${DEMO_OTP}.`} testID="demo-otp-hint" /> : null}
+      {config.testLogin && !config.demoMode ? <Banner tone="info" title="Test version" message="No SMS is sent. Enter the test code you were given." testID="test-otp-hint" /> : null}
       {resent && !error ? <Banner tone="success" title="New code sent" /> : null}
       <Input
         testID="otp-input"

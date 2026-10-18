@@ -15,3 +15,7 @@ dist-web
 # Cloudflare local secrets
 .dev.vars
 .wrangler
+
+# Built app packages
+*.apk
+*.aab

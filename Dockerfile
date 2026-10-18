@@ -1,4 +1,4 @@
-# API image (services/api). Build from the repo root:  docker build -t meadowpail-api .
+# API image (services/api). Build from the repo root:  docker build -t dailydairy-api .
 # Real mode (default): needs DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY (+ optional Razorpay vars).
 # Demo mode: set START_MODE=demo (in-memory data, simulated login/payments; never for real customers).
 FROM node:22-slim

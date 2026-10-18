@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Meadowpail",
-    "slug": "meadowpail",
-    "scheme": "meadowpail",
+    "name": "DailyDairy",
+    "slug": "dailydairy",
+    "scheme": "dailydairy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,11 +13,11 @@
       "backgroundColor": "#FBF7EC"
     },
     "ios": {
-      "bundleIdentifier": "com.meadowpail.app",
+      "bundleIdentifier": "com.dailydairy.app",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.meadowpail.app",
+      "package": "com.dailydairy.app",
       "adaptiveIcon": {
         "backgroundColor": "#1F5C3A",
         "foregroundImage": "./assets/android-icon-foreground.png",
