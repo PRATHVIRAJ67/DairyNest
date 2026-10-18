@@ -1,0 +1,45 @@
+{
+  "name": "@milk/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/server.ts",
+    "start": "node --env-file=../../.env dist/server.js",
+    "build": "tsup",
+    "typecheck": "tsc -p .",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file=../../.env scripts/migrate.ts",
+    "db:seed": "tsx --env-file=../../.env scripts/migrate.ts --seed",
+    "demo": "tsx scripts/local-demo.ts"
+  },
+  "dependencies": {
+    "@milk/shared": "*",
+    "@milk/validation": "*",
+    "@supabase/supabase-js": "^2.47.10",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.7",
+    "supertest": "^7.0.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "demo": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "demo",
+        "EXPO_PUBLIC_DEMO_MODE": "1",
+        "EXPO_PUBLIC_DEMO_BUILD": "1",
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.37:4000/api/v1",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@example.com"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "demo-online": {
+      "extends": "demo",
+      "env": {
+        "APP_VARIANT": "demo",
+        "EXPO_PUBLIC_DEMO_MODE": "1",
+        "EXPO_PUBLIC_DEMO_BUILD": "1",
+        "EXPO_PUBLIC_API_URL": "https://meadowpail-demo-api.onrender.com/api/v1",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@example.com"
+      }
+    }
+  }
+}

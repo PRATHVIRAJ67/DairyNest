@@ -1,0 +1,33 @@
+# Render Blueprint (render.com > New > Blueprint > pick this repo).
+services:
+  # Public DEMO API: in-memory data, any phone number + code 123456, simulated payments.
+  # Free instances sleep after ~15 idle minutes; the next request wakes them (about 1 minute) and data resets.
+  - type: web
+    name: meadowpail-demo-api
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: START_MODE
+        value: demo
+      - key: PUBLIC_DEMO
+        value: "1"
+
+  # REAL API (uncomment when Supabase is set up). Secrets are entered in the Render dashboard, never committed.
+  # - type: web
+  #   name: meadowpail-api
+  #   runtime: docker
+  #   plan: free
+  #   region: singapore
+  #   healthCheckPath: /api/v1/health
+  #   envVars:
+  #     - { key: NODE_ENV, value: production }
+  #     - { key: CORS_ORIGINS, value: "https://example.com" }
+  #     - { key: DATABASE_URL, sync: false }
+  #     - { key: SUPABASE_URL, sync: false }
+  #     - { key: SUPABASE_ANON_KEY, sync: false }
+  #     - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+  #     - { key: RAZORPAY_KEY_ID, sync: false }
+  #     - { key: RAZORPAY_KEY_SECRET, sync: false }
+  #     - { key: RAZORPAY_WEBHOOK_SECRET, sync: false }

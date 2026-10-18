@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Meadowpail",
+    "slug": "meadowpail",
+    "scheme": "meadowpail",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF7EC"
+    },
+    "ios": {
+      "bundleIdentifier": "com.meadowpail.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.meadowpail.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1F5C3A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#1F5C3A"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

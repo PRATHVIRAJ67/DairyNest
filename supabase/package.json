@@ -1,0 +1,7 @@
+{
+  "name": "@milk/supabase-tests",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "@electric-sql/pglite": "^0.2.17", "vitest": "^2.1.8" }
+}

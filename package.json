@@ -1,0 +1,34 @@
+{
+  "name": "milk-delivery",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*",
+    "supabase"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "demo:api": "npm run demo -w @milk/api",
+    "demo:app": "npm run start -w @milk/mobile",
+    "apk:demo": "npm run apk:demo -w @milk/mobile",
+    "apk:demo-online": "npm run apk:demo-online -w @milk/mobile"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.19.0"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-test-renderer": "19.2.3"
+  }
+}
