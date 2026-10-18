@@ -58,6 +58,15 @@ Demo mode runs the real API on an in-memory database. It swaps SMS for the fixed
 
 `npm run apk:demo` builds a separate **Meadowpail Demo** app (package `com.meadowpail.app.demo`) in Expo's cloud and prints a download link. It needs a free Expo account: run `npx eas-cli login` once first. The APK talks to the demo API at the address set in `apps/mobile/eas.json`, currently `http://192.168.1.37:4000/api/v1`. Keep `npm run demo:api` running on that computer, and keep the phone on the same Wi-Fi.
 
+## Online demo (any network)
+
+1. Push this repo to a private GitHub repo.
+2. On render.com, choose New > Blueprint and pick the repo. `render.yaml` creates `meadowpail-demo-api`, a free Docker service.
+3. Open `https://<service>.onrender.com/api/v1/health`. If the URL differs from `https://meadowpail-demo-api.onrender.com`, update `EXPO_PUBLIC_API_URL` in the `demo-online` profile of `apps/mobile/eas.json`.
+4. Run `npx eas-cli login` once, then `npm run apk:demo-online`, and install the APK from the link.
+
+Free Render instances sleep after about 15 idle minutes. The first request then takes about a minute, and demo data resets.
+
 ## Scripts (repo root)
 
 `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
