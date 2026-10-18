@@ -1,0 +1,26 @@
+// Cloudflare Worker for the API. Deploy: npm run cf:deploy -w @milk/api (after `npx wrangler login`).
+// Secrets (never put them here): npx wrangler secret put DATABASE_URL / SUPABASE_ANON_KEY / RAZORPAY_* ...
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "dairynest-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Express 4's body parser ships iconv-lite 0.4, which breaks under the Workers bundler; 0.6 has the same API.
+  // pino needs worker threads and file streams, which Workers lack; console-based shims keep the same API.
+  "alias": {
+    "iconv-lite": "iconv-lite-workers",
+    "pino": "./src/workers-shims/pino.js",
+    "pino-http": "./src/workers-shims/pino-http.js",
+    "swagger-ui-express": "./src/workers-shims/swagger-ui-express.js"
+  },
+  "vars": {
+    "SUPABASE_URL": "https://vgehaqqukkkgvoqgpkap.supabase.co",
+    "LOG_LEVEL": "info",
+    // The native app does not need CORS. Add the web app's Pages URL here once it exists.
+    "CORS_ORIGINS": "https://dairynest.pages.dev,http://localhost:8081"
+  }
+  // Optional, faster pooled connections: create with `npx wrangler hyperdrive create dairynest-db --connection-string="..."`
+  // then add: "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<id>" }]
+}

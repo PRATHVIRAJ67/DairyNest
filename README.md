@@ -58,6 +58,19 @@ Demo mode runs the real API on an in-memory database. It swaps SMS for the fixed
 
 `npm run apk:demo` builds a separate **Meadowpail Demo** app (package `com.meadowpail.app.demo`) in Expo's cloud and prints a download link. It needs a free Expo account: run `npx eas-cli login` once first. The APK talks to the demo API at the address set in `apps/mobile/eas.json`, currently `http://192.168.1.37:4000/api/v1`. Keep `npm run demo:api` running on that computer, and keep the phone on the same Wi-Fi.
 
+## Host on Cloudflare (real Supabase backend)
+
+The API runs as a Cloudflare Worker (`services/api/src/worker.ts`). It reaches Supabase through Hyperdrive, which pools connections over TLS with query caching off. The web app runs on Cloudflare Pages.
+
+1. Fill in the repo-root `.env`: `DATABASE_URL`, `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the publishable key).
+2. Run `npx wrangler login` once.
+3. Run `npm run cf:deploy`. It creates or reuses the Hyperdrive config, deploys the Worker, uploads secrets, publishes the web app to Pages, sets CORS, and writes the live URLs into the `cloud` APK profile.
+4. For a phone build, run `npx eas-cli login` and then `npm run apk:cloud`.
+
+Sign-in uses Supabase phone OTP, so turn on the Phone provider in Supabase first. Test numbers work without sending SMS. Free-plan limits are 100k requests a day for Workers and 3 MB for the Worker bundle. The bundle is about 0.6 MB.
+
+To run locally in the Workers runtime, use `npm run cf:dev -w @milk/api` with secrets in `services/api/.dev.vars`, which is gitignored.
+
 ## Online demo (any network)
 
 1. Push this repo to a private GitHub repo.

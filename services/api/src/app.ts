@@ -9,11 +9,20 @@ import { errorHandler, notFoundHandler, requestId } from './http';
 import { buildOpenApi } from './openapi';
 import { buildRouter } from './routes';
 
-export function createApp(deps: Deps, opts: { rateLimit?: boolean } = {}) {
+export interface AppOptions {
+  rateLimit?: boolean;
+  /** Interactive Swagger UI (reads static files from disk, so it is off on Cloudflare Workers). */
+  docs?: boolean;
+  /** Runs first on every request, e.g. to open a per-request database connection on Workers. */
+  requestScope?: express.RequestHandler;
+}
+
+export function createApp(deps: Deps, opts: AppOptions = {}) {
   const app = express();
   app.disable('x-powered-by');
   if (deps.config.NODE_ENV === 'production') app.set('trust proxy', 1);
 
+  if (opts.requestScope) app.use(opts.requestScope);
   app.use(requestId());
   app.use(pinoHttp({ logger: deps.log, genReqId: (req) => (req as any).requestId, autoLogging: deps.config.NODE_ENV !== 'test' }));
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -32,7 +41,8 @@ export function createApp(deps: Deps, opts: { rateLimit?: boolean } = {}) {
 
   const spec = buildOpenApi();
   app.get('/api/v1/openapi.json', (_req, res) => res.json(spec));
-  app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(spec));
+  if (opts.docs !== false) app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(spec));
+  else app.get('/api/v1/docs', (_req, res) => res.redirect('/api/v1/openapi.json'));
 
   app.use('/api/v1', buildRouter(deps));
   app.use(notFoundHandler());

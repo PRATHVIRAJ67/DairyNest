@@ -1,0 +1,131 @@
+// One-command Cloudflare deployment: API on Workers (+ Hyperdrive to Supabase) and the web app on Pages.
+// Prerequisites: `npx wrangler login` once, and the repo-root .env filled in (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY).
+// Usage (repo root): npm run cf:deploy            -> API + web app
+//                    npm run cf:deploy -- --api-only
+// Safe to re-run: existing Hyperdrive config and Pages project are reused; secrets and code are updated.
+import { execSync, spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+
+const apiDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(apiDir, '..', '..');
+const mobileDir = join(root, 'apps', 'mobile');
+const apiOnly = process.argv.includes('--api-only');
+const HD_NAME = 'dairynest-db';
+const PAGES_PROJECT = 'dairynest';
+
+const step = (m) => console.log(`\n▸ ${m}`);
+const fail = (m) => { console.error(`\n✖ ${m}`); process.exit(1); };
+const wr = (args, opts = {}) => {
+  const r = spawnSync('npx', ['wrangler', ...args], { cwd: opts.cwd ?? apiDir, shell: true, encoding: 'utf8', input: opts.input, env: { ...process.env, ...opts.env } });
+  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+  if (opts.echo !== false) process.stdout.write(out.split('\n').filter((l) => !/password|postgres(ql)?:\/\//i.test(l)).join('\n'));
+  return { ok: r.status === 0, out };
+};
+
+function readEnv(file) {
+  const env = {};
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
+    if (m) env[m[1]] = m[2];
+  }
+  return env;
+}
+
+// ---------------------------------------------------------------- checks
+const env = readEnv(join(root, '.env'));
+for (const k of ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
+  if (!env[k] || /PASTE|YOUR-/.test(env[k])) fail(`${k} is missing in .env (repo root).`);
+}
+step('Checking Cloudflare login');
+if (!wr(['whoami'], { echo: false }).out.match(/associated with the email|You are logged in/i)) fail('Not logged in. Run: npx wrangler login');
+
+// ---------------------------------------------------------------- Hyperdrive (pooled, TLS connection to Supabase)
+step(`Hyperdrive config "${HD_NAME}"`);
+const sessionPooler = env.DATABASE_URL.replace(':6543/', ':5432/'); // Hyperdrive does its own pooling: use session mode
+let hdId = (wr(['hyperdrive', 'list'], { echo: false }).out.split('\n').find((l) => l.includes(HD_NAME))?.match(/[0-9a-f]{32}/) ?? [])[0];
+if (!hdId) {
+  const r = wr(['hyperdrive', 'create', HD_NAME, `--connection-string="${sessionPooler}"`, '--caching-disabled'], { echo: false });
+  hdId = (r.out.match(/"id":\s*"([0-9a-f]{32})"/) ?? r.out.match(/\b([0-9a-f]{32})\b/) ?? [])[1];
+  if (!hdId) fail(`Could not create Hyperdrive:\n${r.out.replace(/postgres(ql)?:\/\/\S+/g, '[connection string]')}`);
+  console.log(`  created ${hdId}`);
+} else console.log(`  reusing ${hdId}`);
+
+const cfgPath = join(apiDir, 'wrangler.jsonc');
+let cfg = readFileSync(cfgPath, 'utf8');
+if (!cfg.includes('"hyperdrive":')) {
+  cfg = cfg.replace(/\n}\s*$/, `,\n  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "${hdId}" }]\n}\n`);
+  writeFileSync(cfgPath, cfg);
+  console.log('  added HYPERDRIVE binding to wrangler.jsonc');
+}
+
+// ---------------------------------------------------------------- API Worker
+step('Deploying API Worker');
+const vars = ['--var', `SUPABASE_URL:${env.SUPABASE_URL}`];
+let dep = wr(['deploy', ...vars]);
+if (!dep.ok) fail('Worker deploy failed.');
+const apiUrl = (dep.out.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/) ?? [])[0];
+if (!apiUrl) fail('Deployed, but could not read the workers.dev URL from the output.');
+console.log(`  API: ${apiUrl}/api/v1`);
+
+// ---------------------------------------------------------------- secrets
+step('Uploading secrets (encrypted at Cloudflare, never stored in the repo)');
+const secrets = { DATABASE_URL: env.DATABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY };
+for (const k of ['SUPABASE_SERVICE_ROLE_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXPO_ACCESS_TOKEN']) {
+  if (env[k]) secrets[k] = env[k];
+}
+const secretFile = join(tmpdir(), `dairynest-secrets-${process.pid}.json`);
+writeFileSync(secretFile, JSON.stringify(secrets));
+try {
+  if (!wr(['secret', 'bulk', `"${secretFile}"`]).ok) fail('Uploading secrets failed (the Worker may need a first deploy; re-run this script).');
+} finally {
+  writeFileSync(secretFile, '{}');
+}
+
+const health = execSync(`curl -s --max-time 30 ${apiUrl}/api/v1/health`, { encoding: 'utf8' });
+console.log(`  health: ${health}`);
+
+// Point the "cloud" APK profile at the live API (publishable values only; they ship inside the app anyway).
+const easPath = join(mobileDir, 'eas.json');
+const eas = JSON.parse(readFileSync(easPath, 'utf8'));
+eas.build.cloud = {
+  distribution: 'internal',
+  android: { buildType: 'apk' },
+  env: { EXPO_PUBLIC_API_URL: `${apiUrl}/api/v1`, EXPO_PUBLIC_SUPABASE_URL: env.SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY },
+};
+writeFileSync(easPath, `${JSON.stringify(eas, null, 2)}\n`);
+console.log('  updated the "cloud" APK profile in apps/mobile/eas.json');
+
+if (apiOnly) {
+  console.log(`\n✔ Done. API base URL for the app: ${apiUrl}/api/v1`);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- Web app on Pages
+step('Building the web app');
+const publicEnv = {
+  EXPO_PUBLIC_API_URL: `${apiUrl}/api/v1`,
+  EXPO_PUBLIC_SUPABASE_URL: env.SUPABASE_URL,
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+  EXPO_PUBLIC_DEMO_MODE: '0',
+  CI: '1',
+};
+const b = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-web'], { cwd: mobileDir, shell: true, stdio: 'inherit', env: { ...process.env, ...publicEnv } });
+if (b.status !== 0) fail('Web build failed.');
+writeFileSync(join(mobileDir, 'dist-web', '_redirects'), '/* /index.html 200\n'); // client-side routes
+
+step(`Pages project "${PAGES_PROJECT}"`);
+wr(['pages', 'project', 'create', PAGES_PROJECT, '--production-branch', 'main'], { echo: false }); // fine if it exists
+const pd = wr(['pages', 'deploy', 'dist-web', '--project-name', PAGES_PROJECT, '--branch', 'main', '--commit-dirty=true'], { cwd: mobileDir });
+if (!pd.ok) fail('Pages deploy failed.');
+// The production address is <project>.pages.dev, or a suffixed name if that subdomain was taken.
+const sub = (pd.out.match(/https:\/\/[a-z0-9]+\.([a-z0-9-]+)\.pages\.dev/) ?? [])[1] ?? PAGES_PROJECT;
+const pagesUrl = `https://${sub}.pages.dev`;
+
+step('Allowing the web app to call the API (CORS)');
+dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${pagesUrl},http://localhost:8081`], { echo: false });
+if (!dep.ok) fail('Re-deploy with CORS failed.');
+
+console.log(`\n✔ Done.\n  Web app: ${pagesUrl}\n  API:     ${apiUrl}/api/v1\n  For the APK, use EXPO_PUBLIC_API_URL=${apiUrl}/api/v1`);
