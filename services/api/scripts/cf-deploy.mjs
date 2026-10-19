@@ -123,7 +123,9 @@ const webUrl = (wd.out.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/) ?? [])[0];
 if (!webUrl) fail('Web app deployed, but could not read its workers.dev URL.');
 
 step('Allowing the web app to call the API (CORS)');
-dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${webUrl},http://localhost:8081`], { echo: false });
+// Other browser apps that call the API (e.g. the partner dashboard) come from EXTRA_CORS_ORIGINS in .env.
+const origins = [webUrl, 'http://localhost:8081', ...(env.EXTRA_CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean)];
+dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${origins.join(',')}`], { echo: false });
 if (!dep.ok) fail('Re-deploy with CORS failed.');
 
 console.log(`\n✔ Done.\n  Web app: ${webUrl}\n  API:     ${apiUrl}/api/v1\n  For the APK, use EXPO_PUBLIC_API_URL=${apiUrl}/api/v1`);
