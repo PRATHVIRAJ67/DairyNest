@@ -10,7 +10,8 @@ export type DeliveryStatus =
   | 'cancelled';
 export type PaymentOrderStatus = 'created' | 'paid' | 'failed' | 'expired';
 export type PaymentStatus = 'pending' | 'captured' | 'failed' | 'refunded' | 'partially_refunded';
-export type ProductCategory = 'milk' | 'curd' | 'other';
+/** Owner-defined slug, e.g. 'milk', 'curd', 'ghee'. */
+export type ProductCategory = string;
 
 export interface ApiOk<T> {
   data: T;

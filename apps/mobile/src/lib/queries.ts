@@ -42,6 +42,7 @@ export const useProducts = (f: { category?: string; q?: string; featured?: boole
     },
   });
 export const useProduct = (slug: string) => useQuery({ queryKey: qk.product(slug), queryFn: () => api.publicGet<Product>(`/products/${slug}`) });
+export const useCategories = () => useQuery({ queryKey: ['categories'], queryFn: () => api.publicGet<{ category: string; products: number }[]>('/categories'), staleTime: 5 * 60_000 });
 export const usePlans = () => useQuery({ queryKey: qk.plans, queryFn: () => api.publicGet<Plan[]>('/plans'), staleTime: 10 * 60_000 });
 export const useHealth = () => useQuery({ queryKey: qk.health, queryFn: () => api.publicGet<{ paymentsConfigured: boolean }>('/health'), staleTime: 60_000 });
 export const useFaqs = () => useQuery({ queryKey: qk.faqs, queryFn: () => api.publicGet<{ q: string; a: string }[]>('/support/faqs'), staleTime: 60 * 60_000 });

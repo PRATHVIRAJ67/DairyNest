@@ -5,14 +5,10 @@ import { ProductCard } from '@/components/ProductCard';
 import { CartBar } from '@/components/CartBar';
 import { CardSkeleton, Chip, EmptyState, ErrorState, Input, Row, Screen, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
-import { useProducts } from '@/lib/queries';
+import { categoryLabel } from '@/lib/format';
+import { useCategories, useProducts } from '@/lib/queries';
 import { spacing } from '@/theme/tokens';
 
-const CATS = [
-  { k: undefined, t: 'All' },
-  { k: 'milk', t: 'Milk' },
-  { k: 'curd', t: 'Curd' },
-] as const;
 
 export default function Shop() {
   const params = useLocalSearchParams<{ category?: string }>();
@@ -25,16 +21,18 @@ export default function Shop() {
   useEffect(() => { const t = setTimeout(() => setQ(search.trim()), 300); return () => clearTimeout(t); }, [search]);
 
   const products = useProducts({ category, q: q || undefined });
+  // Categories come from the server, so new ones (ghee, paneer…) appear without an app update.
+  const cats = [{ k: undefined as string | undefined, t: 'All' }, ...(useCategories().data ?? []).map((c) => ({ k: c.category, t: categoryLabel(c.category) }))];
   const cardW = Math.floor((width - spacing.lg * 2 - spacing.md) / 2);
 
   return (
     <View style={{ flex: 1 }}>
       <Screen onRefresh={() => products.refetch()} refreshing={products.isRefetching}>
         <Text variant="display">Shop</Text>
-        <Text muted style={{ marginBottom: spacing.lg }}>Milk and curd, delivered fresh</Text>
-        <Input label="Search" icon="search" placeholder="Search milk, curd…" value={search} onChangeText={setSearch} returnKeyType="search" testID="shop-search" />
-        <Row style={{ marginBottom: spacing.lg }}>
-          {CATS.map((c) => <Chip key={c.t} label={c.t} selected={category === c.k} onPress={() => setCategory(c.k)} testID={`chip-${c.t}`} />)}
+        <Text muted style={{ marginBottom: spacing.lg }}>Fresh dairy, delivered every morning</Text>
+        <Input label="Search" icon="search" placeholder="Search products…" value={search} onChangeText={setSearch} returnKeyType="search" testID="shop-search" />
+        <Row style={{ marginBottom: spacing.lg, flexWrap: 'wrap', rowGap: spacing.sm }}>
+          {cats.map((c) => <Chip key={c.t} label={c.t} selected={category === c.k} onPress={() => setCategory(c.k)} testID={`chip-${c.t}`} />)}
         </Row>
         {products.isLoading ? <CardSkeleton /> : products.isError ? (
           <ErrorState message={errorMessage(products.error)} onRetry={() => products.refetch()} />

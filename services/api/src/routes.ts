@@ -15,7 +15,9 @@ import * as addresses from './services/addresses';
 import * as catalog from './services/catalog';
 import * as deliveries from './services/deliveries';
 import * as payments from './services/payments';
+import * as owner from './services/owner';
 import * as subs from './services/subscriptions';
+import * as supplier from './services/supplier';
 import { buildTestRouter } from './testing';
 
 const idParam = z.object({ id: uuid });
@@ -41,6 +43,7 @@ export function buildRouter(deps: Deps): Router {
   }));
   r.get('/products/:idOrSlug', asyncHandler(async (req, res) => ok(res, await catalog.getProduct(deps.db, req.params.idOrSlug))));
   r.get('/plans', asyncHandler(async (_req, res) => ok(res, await catalog.listPlans(deps.db))));
+  r.get('/categories', asyncHandler(async (_req, res) => ok(res, await owner.listCategories(deps.db))));
   r.get('/serviceability', validate(serviceabilityQuery, 'query'), asyncHandler(async (req, res) =>
     ok(res, await catalog.serviceability(deps.db, (req.query as any).postalCode))));
   r.get('/support/faqs', (_req, res) => ok(res, account.FAQS));
@@ -146,7 +149,7 @@ export function buildRouter(deps: Deps): Router {
   r.get('/support/tickets', asyncHandler(async (req, res) => ok(res, await account.listTickets(deps, uid(req)))));
   r.post('/support/tickets', validate(supportTicketInput), asyncHandler(async (req, res) => ok(res, await account.createTicket(deps, uid(req), req.body), undefined, 201)));
 
-  // ---------------- operations (admin role only; there is no admin UI in this release)
+  // ---------------- operations (admin role; used by the owner dashboard)
   const admin = Router();
   admin.use(requireRole('admin'));
   admin.patch('/deliveries/:id/status', sid, validate(z.object({
@@ -154,7 +157,58 @@ export function buildRouter(deps: Deps): Router {
   })), asyncHandler(async (req, res) => ok(res, await deliveries.setDeliveryStatus(deps, uid(req), req.params.id, req.body.status, req.body.reason))));
   admin.post('/payments/:id/refund', sid, validate(z.object({ amountMinor: z.number().int().positive().optional() })), asyncHandler(async (req, res) =>
     ok(res, await payments.refundPayment(deps, uid(req), req.params.id, req.body.amountMinor))));
+  // ---------------- owner management (admin role): areas, suppliers, catalogue
+  const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM');
+  const pin = z.string().regex(/^[1-9][0-9]{5}$/, 'Enter a valid 6-digit PIN code');
+  const zoneBody = z.object({
+    name: z.string().trim().min(2).max(60), postalCodes: z.array(pin).min(1).max(200),
+    windowStart: hhmm, windowEnd: hhmm, cutoffTime: hhmm, isActive: z.boolean().default(true),
+  });
+  const variantBody = z.object({
+    sku: z.string().trim().max(40).optional(), name: z.string().trim().min(1).max(60), sizeLabel: z.string().trim().min(1).max(30),
+    priceMinor: z.number().int().min(0).max(10_000_000), mrpMinor: z.number().int().min(0).max(10_000_000),
+    isAvailable: z.boolean().default(true), sortOrder: z.number().int().min(0).max(9999).optional(),
+  });
+  const productBody = z.object({
+    name: z.string().trim().min(2).max(80), description: z.string().trim().max(600).default(''),
+    category: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9-]{1,29}$/, 'Use a short lowercase word, e.g. ghee'),
+    imageUrl: z.string().url().max(500).nullable().optional().or(z.literal('')),
+    isActive: z.boolean().default(true), isFeatured: z.boolean().default(false), sortOrder: z.number().int().min(0).max(9999).optional(),
+    variants: z.array(variantBody).max(20).optional(),
+  });
+  const supplierBody = z.object({ phone: z.string().regex(/^\+91[6-9][0-9]{9}$/, 'Use +91 followed by a 10-digit number'), fullName: z.string().trim().min(2).max(80), zoneIds: z.array(uuid).max(50) });
+
+  admin.get('/zones', asyncHandler(async (_req, res) => ok(res, await owner.listZones(deps.db))));
+  admin.post('/zones', validate(zoneBody), asyncHandler(async (req, res) => ok(res, { id: await owner.createZone(deps, uid(req), req.body) }, undefined, 201)));
+  admin.patch('/zones/:id', sid, validate(zoneBody.partial()), asyncHandler(async (req, res) => ok(res, { id: await owner.updateZone(deps, uid(req), req.params.id, req.body) })));
+  admin.get('/suppliers', asyncHandler(async (_req, res) => ok(res, await owner.listSuppliers(deps.db))));
+  admin.post('/suppliers', validate(supplierBody), asyncHandler(async (req, res) => ok(res, { id: await owner.createSupplier(deps, uid(req), req.body) }, undefined, 201)));
+  admin.patch('/suppliers/:id', sid, validate(z.object({ fullName: z.string().trim().min(2).max(80).optional(), zoneIds: z.array(uuid).max(50).optional(), active: z.boolean().optional() })),
+    asyncHandler(async (req, res) => ok(res, { id: await owner.updateSupplier(deps, uid(req), req.params.id, req.body) })));
+  admin.get('/products', asyncHandler(async (_req, res) => ok(res, await owner.listAllProducts(deps.db))));
+  admin.post('/products', validate(productBody), asyncHandler(async (req, res) => ok(res, { id: await owner.createProduct(deps, uid(req), req.body) }, undefined, 201)));
+  admin.patch('/products/:id', sid, validate(productBody.omit({ variants: true }).partial()), asyncHandler(async (req, res) => ok(res, { id: await owner.updateProduct(deps, uid(req), req.params.id, req.body) })));
+  admin.post('/products/:id/variants', sid, validate(variantBody), asyncHandler(async (req, res) => ok(res, { id: await owner.addVariant(deps, uid(req), req.params.id, req.body) }, undefined, 201)));
+  admin.patch('/variants/:id', sid, validate(variantBody.partial()), asyncHandler(async (req, res) => ok(res, { id: await owner.updateVariant(deps, uid(req), req.params.id, req.body) })));
   r.use('/admin', admin);
+
+  // ---------------- supplier operations (supplier role; owners can act on every area)
+  const sup = Router();
+  sup.use(requireRole('supplier', 'admin'));
+  const actor = (req: any): supplier.Actor => ({ userId: req.auth.userId, role: req.auth.role });
+  const zoneQ = z.object({ zoneId: uuid.optional() });
+  const dateQ = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), zoneId: uuid.optional() });
+  sup.get('/zones', asyncHandler(async (req, res) => ok(res, await supplier.myZones(deps, actor(req)))));
+  sup.get('/day', validate(dateQ, 'query'), asyncHandler(async (req, res) => ok(res, await supplier.day(deps, actor(req), req.query.date as string, req.query.zoneId as string | undefined))));
+  sup.patch('/deliveries/:id/status', sid, validate(z.object({ status: z.enum(['out_for_delivery', 'delivered', 'failed']), reason: z.string().trim().max(300).optional() })),
+    asyncHandler(async (req, res) => ok(res, await supplier.setStatus(deps, actor(req), req.params.id, req.body.status, req.body.reason))));
+  sup.post('/deliveries/bulk-status', validate(z.object({ ids: z.array(uuid).min(1).max(500), status: z.enum(['out_for_delivery', 'delivered']) })),
+    asyncHandler(async (req, res) => ok(res, await supplier.setStatusBulk(deps, actor(req), req.body.ids, req.body.status))));
+  sup.get('/customers', validate(zoneQ.extend({ status: z.enum(['active', 'paused', 'pending_payment', 'past_due', 'cancelled']).optional(), q: z.string().trim().max(60).optional() }), 'query'),
+    asyncHandler(async (req, res) => ok(res, await supplier.customers(deps, actor(req), req.query as any))));
+  sup.get('/reports', validate(zoneQ.extend({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }), 'query'),
+    asyncHandler(async (req, res) => ok(res, await supplier.reports(deps, actor(req), req.query.from as string, req.query.to as string, req.query.zoneId as string | undefined))));
+  r.use('/supplier', sup);
 
   return r;
 }

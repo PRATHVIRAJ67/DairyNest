@@ -36,3 +36,6 @@ export const formatDateTime = (iso: string) => {
 
 /** Local calendar date as YYYY-MM-DD in Asia/Kolkata (the business timezone). */
 export const todayIST = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+
+/** "ghee" -> "Ghee", "a2-milk" -> "A2 Milk". Categories are owner-defined slugs. */
+export const categoryLabel = (c: string) => c.split('-').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');

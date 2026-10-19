@@ -33,7 +33,7 @@ export const SUB_COLS = `s.id, s.user_id, s.plan_id, s.address_id, s.status, s.f
   s.paid_through::text paid_through, s.delivery_balance, s.coupon_id, s.cancelled_at, s.cancel_reason, s.created_at,
   a.zone_id, coalesce(to_char(z.cutoff_time,'HH24:MI'), '${DEFAULT_CUTOFF}') cutoff_time,
   coalesce(z.timezone, '${DEFAULT_TZ}') timezone`;
-const SUB_FROM = `from subscriptions s join addresses a on a.id = s.address_id left join delivery_zones z on z.id = a.zone_id`;
+export const SUB_FROM = `from subscriptions s join addresses a on a.id = s.address_id left join delivery_zones z on z.id = a.zone_id`;
 
 export interface SubRow {
   id: string; user_id: string; plan_id: string | null; address_id: string; status: SubscriptionStatus;

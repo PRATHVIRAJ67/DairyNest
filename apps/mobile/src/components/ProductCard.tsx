@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Card, Text } from '@/components/ui';
 import { ProductImage } from '@/components/ProductArt';
-import { money } from '@/lib/format';
+import { categoryLabel, money } from '@/lib/format';
 import type { Product } from '@/lib/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, spacing } from '@/theme/tokens';
@@ -34,7 +34,7 @@ export function ProductCard({ product, onPress, width }: { product: Product; onP
       </View>
       <View style={{ padding: spacing.md, gap: 2 }}>
         <Text variant="caption" muted>
-          {product.category === 'milk' ? 'MILK' : product.category === 'curd' ? 'CURD' : 'DAIRY'}
+          {categoryLabel(product.category).toUpperCase()}
         </Text>
         <Text weight="semibold" numberOfLines={2}>
           {product.name}

@@ -1,7 +1,7 @@
 import type { ISODate } from '@milk/shared';
 
 export interface Variant { id: string; sku: string; name: string; sizeLabel: string; priceMinor: number; mrpMinor: number; isAvailable: boolean }
-export interface Product { id: string; slug: string; name: string; description: string; category: 'milk' | 'curd' | 'other'; imageUrl: string | null; isFeatured: boolean; variants: Variant[] }
+export interface Product { id: string; slug: string; name: string; description: string; category: string; imageUrl: string | null; isFeatured: boolean; variants: Variant[] }
 export interface Address {
   id: string; label: string; recipientName: string; phone: string; line1: string; line2: string; landmark: string; city: string;
   postalCode: string; deliveryInstructions: string; isDefault: boolean; zoneId: string | null;

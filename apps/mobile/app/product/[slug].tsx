@@ -6,7 +6,7 @@ import { CartBar } from '@/components/CartBar';
 import { ProductImage } from '@/components/ProductArt';
 import { Banner, Button, CardSkeleton, Chip, ErrorState, Header, OptionCard, Row, Screen, Stepper, Text, WeekdayPicker } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
-import { FREQUENCY_LABEL, money } from '@/lib/format';
+import { FREQUENCY_LABEL, categoryLabel, money } from '@/lib/format';
 import { useProduct } from '@/lib/queries';
 import { useCart } from '@/store/cart';
 import { useToast } from '@/store/toast';
@@ -58,7 +58,7 @@ export default function ProductDetails() {
           </View>
         }
       >
-        <Header title={p.name} subtitle={p.category === 'milk' ? 'Milk' : p.category === 'curd' ? 'Curd' : 'Dairy'} />
+        <Header title={p.name} subtitle={categoryLabel(p.category)} />
         <ProductImage imageUrl={p.imageUrl} slug={p.slug} category={p.category} height={240} rounded={radius.xl} />
         <Text style={{ marginTop: spacing.lg }}>{p.description}</Text>
 

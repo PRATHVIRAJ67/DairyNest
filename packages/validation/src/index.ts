@@ -33,7 +33,7 @@ export const addressInput = z.object({
 export const addressUpdate = addressInput.partial();
 
 export const productsQuery = paginationQuery.extend({
-  category: z.enum(['milk', 'curd', 'other']).optional(),
+  category: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9-]{1,29}$/).optional(),
   featured: z.enum(['true', 'false']).optional(),
   q: z.string().trim().max(60).optional(),
 });

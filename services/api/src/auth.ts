@@ -26,7 +26,7 @@ export function supabaseVerifier(url: string, anonKey: string): TokenVerifier {
 
 export interface AuthContext {
   userId: string;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'supplier' | 'admin';
   profile: { fullName: string; phone: string | null; email: string | null };
 }
 declare module 'express-serve-static-core' {
@@ -46,7 +46,7 @@ export function authenticate(verifier: TokenVerifier, db: Db) {
       const user = await verifier.verify(m[1]);
       if (!user) throw unauthorized('Invalid or expired session');
       // Role always comes from the database, never from client-controlled claims.
-      const r = await db.query<{ role: 'customer' | 'admin'; full_name: string; phone: string | null; email: string | null; deleted_at: Date | null }>(
+      const r = await db.query<{ role: 'customer' | 'supplier' | 'admin'; full_name: string; phone: string | null; email: string | null; deleted_at: Date | null }>(
         'select role, full_name, phone, email, deleted_at from profiles where id = $1',
         [user.id],
       );
@@ -71,7 +71,7 @@ export function authenticate(verifier: TokenVerifier, db: Db) {
   };
 }
 
-export const requireRole = (...roles: Array<'customer' | 'admin'>) => (req: Request, _res: Response, next: NextFunction) => {
+export const requireRole = (...roles: Array<'customer' | 'supplier' | 'admin'>) => (req: Request, _res: Response, next: NextFunction) => {
   if (!req.auth) return next(unauthorized());
   if (!roles.includes(req.auth.role)) return next(forbidden());
   next();
