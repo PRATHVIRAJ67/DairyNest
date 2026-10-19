@@ -63,7 +63,11 @@ if (!/^\s*"hyperdrive"\s*:/m.test(cfg)) { // ignore the commented example
 // ---------------------------------------------------------------- API Worker
 step('Deploying API Worker');
 const testing = !!(env.TEST_LOGIN_CODE && env.TEST_SESSION_SECRET);
-const vars = ['--var', `SUPABASE_URL:${env.SUPABASE_URL}`, '--var', `PAYMENTS_MODE:${env.PAYMENTS_MODE || 'razorpay'}`];
+// Allowed browser origins: the defaults in wrangler.jsonc plus EXTRA_CORS_ORIGINS (e.g. the partner dashboard).
+const defaultOrigins = (/"CORS_ORIGINS":\s*"([^"]*)"/.exec(readFileSync(join(apiDir, 'wrangler.jsonc'), 'utf8'))?.[1] ?? '').split(',');
+const extraOrigins = (env.EXTRA_CORS_ORIGINS ?? '').split(',');
+const corsList = (more = []) => [...new Set([...defaultOrigins, ...extraOrigins, ...more].map((o) => o.trim()).filter(Boolean))].join(',');
+const vars = ['--var', `SUPABASE_URL:${env.SUPABASE_URL}`, '--var', `PAYMENTS_MODE:${env.PAYMENTS_MODE || 'razorpay'}`, '--var', `CORS_ORIGINS:${corsList()}`];
 if (testing) console.log('  ⚠ TEST MODE: test login is ON and payments are ' + (env.PAYMENTS_MODE || 'razorpay') + '. Remove TEST_* from .env before launch.');
 let dep = wr(['deploy', ...vars]);
 if (!dep.ok) fail('Worker deploy failed.');
@@ -124,8 +128,7 @@ if (!webUrl) fail('Web app deployed, but could not read its workers.dev URL.');
 
 step('Allowing the web app to call the API (CORS)');
 // Other browser apps that call the API (e.g. the partner dashboard) come from EXTRA_CORS_ORIGINS in .env.
-const origins = [webUrl, 'http://localhost:8081', ...(env.EXTRA_CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean)];
-dep = wr(['deploy', ...vars, '--var', `CORS_ORIGINS:${origins.join(',')}`], { echo: false });
+dep = wr(['deploy', ...vars.slice(0, -2), '--var', `CORS_ORIGINS:${corsList([webUrl])}`], { echo: false });
 if (!dep.ok) fail('Re-deploy with CORS failed.');
 
 console.log(`\n✔ Done.\n  Web app: ${webUrl}\n  API:     ${apiUrl}/api/v1\n  For the APK, use EXPO_PUBLIC_API_URL=${apiUrl}/api/v1`);
